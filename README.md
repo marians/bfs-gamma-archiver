@@ -23,20 +23,20 @@ for a span of 24 hours.
 5. Optional/recommended: Create a virtual environment and
    activate it.
 
-```
-virtualenv venv
-source venv/bin/activate
-```
+    ```
+    virtualenv venv
+    source venv/bin/activate
+    ```
 
 6. Install requirements:
 
-```
-pip install -r requirements.txt
-```
+    ```
+    pip install -r requirements.txt
+    ```
 
 7. Run the script:
 
-```
-python download.py -v
-```
+    ```
+    python download.py -v
+    ```
 
