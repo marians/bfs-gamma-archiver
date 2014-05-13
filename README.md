@@ -13,7 +13,7 @@ for a span of 24 hours.
    personal account for http://odlinfo.bfs.de/daten/
 
 2. On your machine, create a MySQL database and, if necessary, 
-   a user with SELECT and INSERT permissions.
+   a user with SELECT, INSERT and CREATE TABLE permissions.
 
 3. Copy config.dist.py to config.py
 
@@ -23,14 +23,14 @@ for a span of 24 hours.
 5. Optional/recommended: Create a virtual environment and
    activate it.
 
-    virtualenv venv
-    source venv/bin/activate
+    `virtualenv venv`
+    `source venv/bin/activate`
 
 6. Install requirements:
 
-    pip install -r requirements.txt
+    `pip install -r requirements.txt`
 
 7. Run the script:
 
-    python download.py -v
+    `python download.py -v`
 
