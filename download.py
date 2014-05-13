@@ -127,7 +127,7 @@ def init_db():
           `name` varchar(255) NOT NULL DEFAULT '',
           `longitude` decimal(5,2) NOT NULL,
           `latitude` decimal(5,2) NOT NULL,
-          `pachube_feed_id` int(10) unsigned DEFAULT NULL,
+          `xively_feed_id` int(10) unsigned DEFAULT NULL,
           PRIMARY KEY (`id`)
         ) ENGINE=%s DEFAULT CHARSET=utf8 COMMENT='BFS stations'""" %
         config.DB_ENGINE)
