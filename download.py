@@ -89,11 +89,25 @@ def execute(sql):
 
 
 def get_stations():
-    rows = get_mysql_rows('SELECT id FROM stations')
+    rows = list(get_mysql_rows('SELECT id FROM stations'))
     stations = {}
     for row in rows:
         stations[row['id']] = True
     return stations
+
+
+def get_file_lastmod(file_id):
+    rows = list(get_mysql_rows('''SELECT id, last_modified
+        FROM files WHERE id="%s"''' % file_id))
+    if len(rows) == 1:
+        return rows[0]["last_modified"]
+
+
+def set_file_lastmod(file_id, lastmod):
+    execute("""INSERT INTO files (id, last_modified)
+        VALUES ('%s', '%s')
+        ON DUPLICATE KEY UPDATE last_modified='%s'""" %
+        (file_id, lastmod, lastmod))
 
 
 def init_db():
@@ -134,6 +148,17 @@ def init_db():
         ) ENGINE=%s DEFAULT CHARSET=utf8 COMMENT='1 hour values'""" %
         config.DB_ENGINE)
         execute(sql)
+    # file status table
+    if "files" not in tables:
+        if args.verbose:
+            print("Creating file status table 'files'")
+        sql = ("""CREATE TABLE `files` (
+          `id` varchar(30) NOT NULL DEFAULT '',
+          `last_modified` varchar(100) DEFAULT NULL,
+          PRIMARY KEY (`id`)
+        ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='File status'""" %
+        config.DB_ENGINE)
+        execute(sql)
 
 
 if __name__ == '__main__':
@@ -170,20 +195,40 @@ if __name__ == '__main__':
     for filename in files_1h:
         num_written_values = 0
         num_written_stations = 0
+        lastmod = get_file_lastmod(filename)
+        headers = {}
+        if lastmod is not None:
+            headers["If-Modified-Since"] = lastmod
         url = config.BFS_URL + filename
         if args.verbose:
-            print("Fetching file %s via URL %s" % (filename, url))
-        req = requests.get(url, auth=(config.BFS_USER, config.BFS_PASS))
-        req.encoding = "ISO-8859-1"
-        text = req.text.encode("utf8")
-        reader = csv.reader(StringIO(text), delimiter="|")
-        for row in reader:
-            (idnum, plz, city, longitude, latitude, datestring, dose, status) = row
-            num_written_values += write_values_to_db([idnum, datestring, dose, status])
-            # add station if not there
-            if idnum not in stations_cache:
-                num_written_stations += write_stations_to_db([idnum, plz, city, longitude, latitude])
-                stations_cache[idnum] = True
+            print("Fetching file '%s' via URL %s" % (filename, url))
+        req = requests.get(url,
+            auth=(config.BFS_USER, config.BFS_PASS),
+            headers=headers)
+        if req.status_code == 200:
+            if "last-modified" in req.headers:
+                set_file_lastmod(filename, req.headers["last-modified"])
+            req.encoding = "ISO-8859-1"
+            text = req.text.encode("utf8")
+            reader = csv.reader(StringIO(text), delimiter="|")
+            for row in reader:
+                (idnum, plz, city, longitude, latitude,
+                    datestring, dose, status) = row
+                num_written_values += write_values_to_db(
+                    [idnum, datestring, dose, status])
+                # add station if not there
+                if idnum not in stations_cache:
+                    num_written_stations += write_stations_to_db(
+                        [idnum, plz, city, longitude, latitude])
+                    stations_cache[idnum] = True
+        else:
+            if args.verbose:
+                if req.status_code == 304:
+                    print("Skipping '%s', not modified since last retrieval." %
+                        filename)
+                else:
+                    sys.stderr.write("Error: unexpected status code %s\n" %
+                        req.status_code)
         written_records += num_written_values + num_written_stations
 
     if args.verbose:
